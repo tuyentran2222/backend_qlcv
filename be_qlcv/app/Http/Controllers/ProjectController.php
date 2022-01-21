@@ -12,7 +12,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
-
+use App\Helpers\Helper;
 class ProjectController extends Controller
 {
     protected $user;
@@ -32,30 +32,21 @@ class ProjectController extends Controller
      */
     public function index(Request $request)
     {
+        $action = "get all projects";
         //get all projects by user id
         $projects = $this->projectInterface->getAllProjectsByUser($this->user->id);
-
         $projectArray = array();
         $index = 0;
-        $arrayRole = ["Owner", "Member" , "Developer", "Maintainace" , "Customer Support", "BA", "Leader", "Project Management"];
+
         if (!empty($projects)) {
             foreach($projects as  $project) {
                 $projectArray[$index] = $project;
                 $projectArray[$index]->index = $index;
-                $projectArray[$index]->role = $arrayRole[$project->role];
+                $projectArray[$index]->role = MemberController::ROLE_ARRAY[$project->role];
                 $index++;
             }
-            
         }
-
-        return response()->json([
-            [
-                'code' => 200,
-                'message' => "Trả danh sách dự án thành công.",
-                'data' => $projectArray
-            ]
-        ]);
-
+        return Helper::getResponseJson(200, "Lấy danh sách dự án thành công.", $projectArray, $action);
     }
 
     /**
@@ -76,17 +67,11 @@ class ProjectController extends Controller
      */
     public function store(Request $request)
     {
+        $action = "create project";
         $validator = Validator::make($request->all(), $this->getProjectRulesValidation());
 
         if ($validator->fails()) {
-            return response()->json(
-                [
-                    'status' => 'error',
-                    'error' => $validator->errors(),
-                    'message'=>"Thông tin nhập vào chưa hợp lệ",
-                    'code' => 422
-                ]
-            );
+            return Helper::getResponseJson(422, "Thông tin nhập vào chưa hợp lệ", [], $action, $validator->errors());
         }
 
         $projectArray = [
@@ -108,20 +93,9 @@ class ProjectController extends Controller
                 'projectId' => $project->id
             ];
             $this->memberInterface->create($memberArray);
-            return response()->json([
-                'status' => 'success',
-                'code' => 200,
-                "message" => "Thêm dự án thành công",
-                'data' => $project
-            ]);
+            return Helper::getResponseJson(200, "Thêm dự án thành công", $project, $action);
         }
-        else
-            return response()->json([
-                'status' => 'error',
-                'code' => 500,
-                "message" => "Thêm dự án thất bại",
-            ]);
-    
+        else return Helper::getResponseJson(500, "Thêm dự án thất bại", [], $action);
     }
 
     /**
@@ -132,16 +106,12 @@ class ProjectController extends Controller
      */
     public function show(Project $project, $id)
     {
+        $action = "show project";
         $project = $this->user->projects()->find($id);
     
-        if (!$project) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Sorry, project not found.'
-            ], 400);
-        }
-    
-        return $project;
+        if (!$project) 
+            return Helper::getResponseJson(400, "Dự án không tồn tại", [], $action);
+        return Helper::getResponseJson(200, "Thành công", $project, $action);
     }
 
     /**
@@ -152,20 +122,13 @@ class ProjectController extends Controller
      */
     public function edit(int $id, Request $request)
     {
+        $action = "edit project";
         $project = $this->projectInterface->find($id);
         if ($project) {
-            return response()->json([
-                'status'=> 'success',
-                'code' => 200,
-                'project' => $project
-            ]);
+            return Helper::getResponseJson(200, "Thành công", $project, $action);
         }
         else {
-            return response()->json([
-                'status'=> 'error',
-                'code' => 404,
-                'message' => 'Không tìm thấy dự án!'
-            ]);
+            return Helper::getResponseJson(404, "Không tìm thấy dự án!", [], $action);
         }
         
     }
@@ -180,18 +143,11 @@ class ProjectController extends Controller
     public function update(Request $request, Project $project)
     { 
         //Validate data
+        $action ="update project";
         $data = $request->only('projectCode', 'projectName', 'projectStart', 'projectEnd', 'partner', 'status');
         $validator = Validator::make($request->all(), $this->getProjectRulesValidation());
         if ($validator->fails()) {
-            return response()->json(
-                [
-                    'status' => 'error',
-                    'error' => $validator->errors(),
-                    'description'=>"Thông tin nhập vào chưa hợp lệ",
-                    'code' => 400
-                ],
-                400
-            );
+            return Helper::getResponseJson(400, "Thông tin nhập vào chưa hợp lệ", [], $action, $validator->errors());
         }
         
         $projectArray = [
@@ -207,12 +163,7 @@ class ProjectController extends Controller
         $project = $this->projectInterface->update($project->id, $projectArray);
 
         //project updated, return success response
-        return response()->json([
-            'status' => 'success',
-            'code' =>200,
-            'message' => 'Dự án cập nhật thành công',
-            'data' => $project
-        ]);
+        return Helper::getResponseJson(200, 'Dự án cập nhật thành công', $project, $action);
     }
 
     /**
@@ -223,8 +174,8 @@ class ProjectController extends Controller
      */
     public function destroy(int $project)
     {   
+        $action = "delete project";
         $project= $this->projectInterface->find((int)($project));
-
         if (!$project) return response()->json([
             'status' => 'fails',
             'code' => 401,
@@ -232,27 +183,16 @@ class ProjectController extends Controller
         ]);
 
         if ($project->ownerId !== $this->user->id) 
-            return response()->json([
-                'status' => 'fails',
-                'code' => 401,
-                'message' => 'Xóa project thất bại do bạn không phải chủ sở hữu project.'
-            ]);
+            return Helper::getResponseJson(401, 'Xóa project thất bại do bạn không phải chủ sở hữu project.', [], $action);
 
         $this->projectInterface->delete($project->id);
-
-        return response()->json([
-            'status' => 'success',
-             'code' => 200,
-            'message' => 'Xóa project thành công.'
-        ]);
+        return Helper::getResponseJson(200, 'Xóa project thành công.', [], $action);
     }
     
     public function getCountProjects() {
+        $action = "get number of projects";
         $count = $this->memberInterface->getCountProjectByUser($this->user->id);
-        return response()->json([
-            'code' => 200,
-            'data' => $count
-        ]);
+        return Helper::getResponseJson(200, 'Thành công.', $count, $action);
     }
 
     public function getProjectRulesValidation($type = "create") {

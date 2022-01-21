@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\Helper;
 use App\Repositories\Authentication\AuthInterface;
 use App\Repositories\User\UserInterface;
 use Exception;
@@ -57,17 +58,9 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(
-                [
-                    'status' => 'fails',
-                    'error' => $validator->errors(),
-                    'message' => 'Đăng ký thất bại',
-                    'code' => 401
-                ]
-            );
+            return Helper::getResponseJson(400, "Đăng ký thất bại", [], 'register', $validator->errors());
         }
         
-
         $userArray = [
             'username' => $request->username,
             'password' => $request->password,
@@ -94,14 +87,7 @@ class AuthController extends Controller
         };
          
 
-        return Response()->json(
-            array(
-                "status" => 'success',
-                "data" => $userArray,
-                'message' => 'Đăng ký thành công',
-                'code' => 200
-            )
-        );
+        return Response()->json(Helper::getResponseJson(200, "Đăng ký thành công", $userArray, 'register' , []));
 
     }
     
@@ -128,31 +114,16 @@ class AuthController extends Controller
         }
 
         //Request is validated
-        
         try {
             if (! $token = JWTAuth::attempt($credentials)) {
-                return response()->json([
-                	'status' => 'error',
-                	'message' => 'Thông tin đăng nhập chưa đúng.',
-                    'code' => 400
-                ]);
+                return Helper::getResponseJson(400, 'Thông tin đăng nhập chưa đúng.', [], 'login', []);
             }
         } catch (JWTException $e) {
-            return response()->json([
-                    'status' => 'error',
-                	'message' => 'Không thể tạo token.',
-                    'code' => 500
-            ]);
+            return  Helper::getResponseJson(500,"Không thể tạo token", [], 'login', []);
         }
- 	
- 		//Token created, return with success response and jwt token
-        return response()->json([
-            'status' => "success",
-            'token' => $token,
-            'code' => 200,
-            'data' => JWTAuth::user(),
-            'message' => "Đăng nhập thành công"
-        ]);
+
+        $dataReturn = ["token" => $token, 'data' => JWTAuth::user()];
+        return Helper::getResponseJson(200, "Đăng nhập thành công", $dataReturn, 'login');
     }
  
     public function logout(Request $request)
@@ -160,27 +131,14 @@ class AuthController extends Controller
         $token = $this->bearerToken($request);
 
         if ($token) $user = JWTAuth::authenticate($token);
-        else response()->json([
-            'status' => "error",
-            'code' => 400,
-            'message' => "Token is empty!"
-        ]);
+        else Helper::getResponseJson(400, "Token is empty", [], 'logout');
 
 		//Request is validated, do logout        
         try {
             JWTAuth::invalidate($request->token);
- 
-            return response()->json([
-                'success' => true,
-                'code' => 200,
-                'message' => 'Đăng xuất thành công.'
-            ]);
+            return Helper::getResponseJson(200, "Đăng xuất thành công.", [], 'logout');
         } catch (JWTException $exception) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Xin lỗi, bạn không thể đăng xuất.',
-                'code' => 500
-            ]);
+            return  Helper::getResponseJson(500, 'Xin lỗi, bạn không thể đăng xuất.', [], 'logout');
         }
     }
 }

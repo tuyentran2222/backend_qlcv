@@ -12,9 +12,8 @@ use App\Repositories\User\UserInterface;
 use Carbon\Carbon;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
-use Symfony\Component\HttpFoundation\Response;
-use Illuminate\Support\Facades\DB;
 
+use App\Helpers\Helper;
 class UserController extends Controller
 {
     public UserInterface $userInterface;
@@ -30,7 +29,7 @@ class UserController extends Controller
     }
 
     public function update($id, Request $request){
-       
+        $action = "update user";
         $file = $request->file('avatar');
         if(!is_null($file)){
             $filename = $file->getClientOriginalName().'.'.$file->extension();
@@ -49,27 +48,16 @@ class UserController extends Controller
             ]
         );
 
-        return response()->json([
-            'code' => 200,
-            'data' => $user,
-            'message' => "Cập nhật thành công"
-        ]);
+        return Helper::getResponseJson(200, "Cập nhật thành công",  $user, $action);
     }
 
     public function getUser(Request $request)
     {   
+        $action = "get user";
         $token = $this->bearerToken($request);
         if ($token) $user = $this->authInterface->getUserByToken($token);
-        else response()->json([
-            'code' => '400',
-            'status' => "error",
-            'message' => "Token không tồn tại."
-        ]);
-        return response()->json([
-            'data' => $user,
-            'code' => 200,
-            'message' => "Lấy thông tin người dùng thành công"
-        ]);
+        else return Helper::getResponseJson(400, "Token không tồn tại.",  [], $action);
+        return Helper::getResponseJson(200, "Lấy thông tin người dùng thành công",  $user, $action);
     }
 
     /**
@@ -84,13 +72,10 @@ class UserController extends Controller
     }
 
     public function getAllProjects(Request $request) {
+        $action = 'get all projects';
         $token = UserController::bearerToken($request);
         $user = $this->authInterface->getUserByToken($token);
         if ($user) $projects = $this->userInterface->getAllProjects($user->id ,$request);
-        return response()->json([
-            'code' => 200,
-            'data' => $projects,
-            'message' => "Thành công"
-        ]);
+        return Helper::getResponseJson(200,  "Thành công", $projects, $action);
     }
 }

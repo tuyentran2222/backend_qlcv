@@ -13,7 +13,7 @@ use App\Models\Project;
 use App\Repositories\Member\MemberInterface;
 use App\Repositories\Project\ProjectInterface;
 use App\Repositories\Task\TaskInterface;
-
+use App\Helpers\Helper;
 class TaskController extends Controller
 {
     protected $project;
@@ -37,28 +37,33 @@ class TaskController extends Controller
      */
     public function index(Request $request, $id)
     {
+        //can update
+        $action = "get list of task";
         $parentTask = array();
         $tasks = $this->taskInterface->getAllTasksByProjectId($id);
         
         $checkMemberInProject = $this->memberInterface->checkMemberInProject($this->user->id, $id);
-        if (!$checkMemberInProject) return response()->json(
-            [
-                'code' => 401,
-                'message' => 'Bạn không thuộc project này'
-            ]
-        );
+        if (!$checkMemberInProject)
+            return Helper::getResponseJson(401, 'Bạn không thuộc project này', [], $action);
+ 
         foreach ($tasks as $index => $task) {
             $parentTask[$index] = $task;
             $projectName = $this->projectInterface->getBasicProjectInfo($task->projectId);
             ($parentTask[$index])->projectName = $projectName->projectName;
         }
-
-        return response()->json([
+        $dataReturn = [
             'data' => $parentTask,
-            'count' => count($parentTask),
-            'code' => 200,
-            'message' => "Thành công"
-        ]) ;
+            'count' => count($parentTask)
+        ];
+
+        return Helper::getResponseJson(401, 'Thành công', $dataReturn, $action);
+
+        // return response()->json([
+        //     'data' => $parentTask,
+        //     'count' => count($parentTask),
+        //     'code' => 200,
+        //     'message' => "Thành công"
+        // ]) ;
     }
 
     /**
@@ -69,19 +74,13 @@ class TaskController extends Controller
      */
     public function store(Request $request, $parentId, $projectId)
     {
+        $action = "create task";
         $project = Project::find($projectId);
         $taskRules = $this->getTaskRulesValidation();
         $validator = Validator::make($request->all(), $taskRules);
 
         if ($validator->fails()) {
-            return response()->json(
-                [
-                    'status' => 'error',
-                    'error' => $validator->errors(),
-                    'message' => "Thông tin nhập vào chưa hợp lệ",
-                    'code' => 406
-                ]
-            );
+            return Helper::getResponseJson(406, "Thông tin nhập vào chưa hợp lệ", [], $action, $validator->errors());
         }
         
         $taskArray = [
@@ -116,19 +115,9 @@ class TaskController extends Controller
                 $ex->userId = $executor;
                 $ex->save();
             }
-            return response()->json([
-                'status' => 'success',
-                'code' => 200,
-                'data' => $task->toArray(),
-                'message' =>'Thêm thành công công việc'
-            ]);
+            return Helper::getResponseJson(200, 'Thêm thành công công việc', $task->toArray(), $action);
         }
-        else
-            return response()->json([
-                'status' => 'fail',
-                'code' => 500,
-                'message' => 'Không thể thêm công việc'
-            ]);
+        else return Helper::getResponseJson(500, 'Không thể thêm công việc', [], $action);
     }
 
     /**
@@ -139,29 +128,17 @@ class TaskController extends Controller
      */
     public function show($id)
     {
+        $action = "show task";
         $task = $this->taskInterface->find($id);
         $checkMemberInProject = $this->memberInterface->checkMemberInProject($this->user->id, $id);
-        if (!$checkMemberInProject) return response()->json(
-            [
-                'code' => 401,
-                'message' => 'Bạn không thuộc project này'
-            ]
-        );
+        if (!$checkMemberInProject) 
+        return Helper::getResponseJson(401, 'Bạn không thuộc project này', [], $action);
 
         if (!$task) {
-            return response()->json([
-                'code' => 404,
-                'success' => false,
-                'message' => 'Công việc không tồn tại'
-            ]);
+            return Helper::getResponseJson(404, 'Công việc không tồn tại', [], $action);
         }
     
-        return response()->json([
-                'data' => $task,
-                'code' => 200,
-                'status' => 'success'
-            ]
-        );
+        return Helper::getResponseJson(200, 'Thành công', $task, $action);
     }
 
     /**
@@ -172,20 +149,15 @@ class TaskController extends Controller
      */
     public function edit($id)
     {
+        //can update
+        $action = "edit task";
         $task = $this->taskInterface->find($id);
         $checkMemberInProject = $this->memberInterface->checkMemberInProject($this->user->id, $task->projectId);
-        if (!$checkMemberInProject) return response()->json(
-            [
-                'code' => 401,
-                'message' => 'Bạn không thuộc project này'
-            ]
-        );
+        if (!$checkMemberInProject) 
+            return Helper::getResponseJson(401, 'Bạn không thuộc project này', [], $action);
+     
         if (!$task) {
-            return response()->json([
-                'code' => 404,
-                'success' => false,
-                'message' => 'Công việc không tồn tại'
-            ]);
+            return Helper::getResponseJson(404, 'Công việc không tồn tại', [], $action);
         }
         
         //get comments of task
@@ -208,15 +180,22 @@ class TaskController extends Controller
 
         //get child task
         $childTasks = $this->taskInterface->getChildTasks($task->id);
-        return response()->json([
-                'data' => $task,
-                'comments' => $arrayComments,
-                'childTasks'=> $childTasks,
-                'executor' => $executorsArrayIds,
-                'code' => 200,
-                'status' => 'success'
-            ]
-        );
+        $dataReturn = [
+            'data' => $task,
+            'comments' => $arrayComments,
+            'childTasks'=> $childTasks,
+            'executor' => $executorsArrayIds,
+        ];
+        return Helper::getResponseJson(200, 'Thành công', $dataReturn, $action);
+        // return response()->json([
+        //         'data' => $task,
+        //         'comments' => $arrayComments,
+        //         'childTasks'=> $childTasks,
+        //         'executor' => $executorsArrayIds,
+        //         'code' => 200,
+        //         'status' => 'success'
+        //     ]
+        // );
     }
 
     /**
@@ -228,19 +207,13 @@ class TaskController extends Controller
      */
     public function update(Request $request, $id)
     {
+        $action = "update task";
         $project = $this->taskInterface->find($id);
         $taskRules = $this->getTaskRulesValidation('update');
         $validator = Validator::make($request->all(), $taskRules);
 
         if ($validator->fails()) {
-            return response()->json(
-                [
-                    'status' => 'error',
-                    'error' => $validator->errors(),
-                    'message'=>"Thông tin nhập vào chưa hợp lệ",
-                    'code' => 406
-                ]
-            );
+            return Helper::getResponseJson(406, "Thông tin nhập vào chưa hợp lệ", [], $action, $validator->errors());
         }
 
         $taskArray = [
@@ -257,12 +230,7 @@ class TaskController extends Controller
         //Request is valid, update project
         $task = $this->taskInterface->update($id, $taskArray);
         //project updated, return success response
-        return response()->json([
-            'status' => 'success',
-            'code' =>200,
-            'message' => 'Dự án công việc thành công',
-            'data' => $task
-        ]);
+        return Helper::getResponseJson(200, 'Dự án công việc thành công', $task, $action);
     }
 
     /**
@@ -273,31 +241,21 @@ class TaskController extends Controller
      */
     public function destroy($id)
     {
+        $action = "delete task";
         $task = $this->taskInterface->find($id);
-        if (!$task) return response()->json(
-            [
-                'code' => 404,
-                'message' => "Không tìm thấy công việc tương ứng",
-                'status' => 'fail'
-            ]
-        );
+        if (!$task) 
+            return Helper::getResponseJson(404, "Không tìm thấy công việc tương ứng", [], $action);
 
         $checkMemberInProject = $this->memberInterface->checkMemberInProject($this->user->id, $task->projectId);
-        if (!$checkMemberInProject) return response()->json(
-            [
-                'code' => 401,
-                'message' => 'Bạn không thuộc dự án này'
-            ]
-        );
+        if (!$checkMemberInProject) 
+            return Helper::getResponseJson(401, 'Bạn không thuộc dự án này', [], $action);
 
         $task = $this->taskInterface->delete($id);
-        return response()->json([
-            'code'=> 200,
-            'message'=>"Xóa công việc thành công"
-        ]);
+            return Helper::getResponseJson(200, "Xóa công việc thành công", [], $action);
     }
 
     public function getAllComments(int $taskId) {
+        $action = "get all comments";
         $task = $this->taskInterface->find($taskId);
         $comments = $this->taskInterface->getAllCommentsOfTask($task);
         $arrayComments = [];
@@ -309,15 +267,12 @@ class TaskController extends Controller
             $arrayComments[$index]['avatar'] = $user->avatar;
             $arrayComments[$index]['id'] = $user->id;
         }
-        return response()->json([
-            'code' => 200,
-            'message' => "Thành công",
-            'data' => $arrayComments,
-        ]);
+        return Helper::getResponseJson(200, "Thành công",  $arrayComments, $action);
     }
 
     public function getAssignedTask() {
-
+        // can update
+        $action = 'get assigned task';
         $parentTask = array();
         $tasks = Task::where('taskPersonId',"like", "%".$this->userId."%")->orderBy('taskStart', 'desc')->get();
         $projects = array();
@@ -327,28 +282,45 @@ class TaskController extends Controller
             ($parentTask[$index])->projectName = $projectName->projectName;
         }
 
-        return response()->json([
+        $dataReturn = [
             'data' => $parentTask,
             'projects' => $projects,
-            'count' => count($parentTask),
-            'code' => 200,
-            'message' => "Thành công"
-        ]) ;
+            'count' => count($parentTask)
+        ];
+
+        return Helper::getResponseJson(200, "Thành công",  $dataReturn, $action);
+        // return response()->json([
+        //     'data' => $parentTask,
+        //     'projects' => $projects,
+        //     'count' => count($parentTask),
+        //     'code' => 200,
+        //     'message' => "Thành công"
+        // ]) ;
     }
 
     public function getCountAssignedTask() {
+        // can update
+        $action = 'get count task';
         $assignedTasksNumber = Task::where('taskPersonId', $this->userId)->orderBy('taskStart', 'desc')->get()->count();
         $createTasksNumber = Task::where('taskPersonId', $this->userId)->orderBy('taskStart', 'desc')->get()->count();
-        return response()->json(
-            [
-                'countAssigned' => $assignedTasksNumber,
-                'countCreate' => $assignedTasksNumber,
-                'code' => 200,
-                'message' => "Thành công"
-            ]
-        );
+        $dataReturn = [
+            'countAssigned' => $assignedTasksNumber,
+            'countCreate' => $assignedTasksNumber
+        ];
+        return Helper::getResponseJson(200, "Thành công",  $dataReturn, $action);
+        // return response()->json(
+        //     [
+        //         'countAssigned' => $assignedTasksNumber,
+        //         'countCreate' => $assignedTasksNumber,
+        //         'code' => 200,
+        //         'message' => "Thành công"
+        //     ]
+        // );
     }
+
     public function getCreatedTask() {
+        //can update
+        $action = "get created task";
         $parentTask = array();
         $parentTaskId = array();  
         $tasks = Task::where('owner', $this->userId)->orderBy('taskStart', 'desc')->get();
@@ -359,16 +331,25 @@ class TaskController extends Controller
             ($parentTask[$index])->projectName = $projectName->projectName;
         }
 
-        return response()->json([
+        $dataReturn = [
             'data' => $parentTask,
             'projects' => $projects,
-            'count' => count($parentTask),
-            'code' => 200,
-            'message' => "Thành công"
-        ]) ;
+            'count' => count($parentTask)
+        ];
+
+        return Helper::getResponseJson(200, "Thành công",  $dataReturn, $action);
+        // return response()->json([
+        //     'data' => $parentTask,
+        //     'projects' => $projects,
+        //     'count' => count($parentTask),
+        //     'code' => 200,
+        //     'message' => "Thành công"
+        // ]) ;
     }
 
     public function getOvertimeTask() {
+        //can update
+        $action = "get task overtime";
         $parentTask = array();
         $parentTaskId = array();
         $currentDate  = date('Y/m/d H:i:s');
@@ -381,13 +362,13 @@ class TaskController extends Controller
             ($parentTask[$index])->projectName = $projectName->projectName;
         }
 
-        return response()->json([
+        $dataReturn = [
             'data' => $parentTask,
             'projects' => $projects,
-            'count' => count($parentTask),
-            'code' => 200,
-            'message' => "Thành công"
-        ]) ;
+            'count' => count($parentTask)
+        ];
+
+        return Helper::getResponseJson(200, "Thành công",  $dataReturn, $action);
     }
 
     /**

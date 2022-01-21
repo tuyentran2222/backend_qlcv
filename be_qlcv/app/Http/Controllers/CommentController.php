@@ -8,6 +8,7 @@ use App\Repositories\Comment\CommentInterface;
 use CommentsTableSeeder;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\Validator;
+use App\Helpers\Helper;
 class CommentController extends Controller
 {
     private CommentInterface $commentInterface;
@@ -53,11 +54,7 @@ class CommentController extends Controller
         $validator = Validator::make($commentArray, $rules);
 
         if ($validator->errors()) {
-            return response()->json([
-                'code' => 200,
-                'message' => "Thêm bình luận thất bại",
-                'errors' => $validator->errors()
-            ]);
+            return  Helper::getResponseJson(400, "Thêm bình luận thất bại", [], 'save comment',$validator->errors());
         }
 
         $comment = $this->commentInterface->create($commentArray);
@@ -71,11 +68,7 @@ class CommentController extends Controller
             'comment_id' => $comment->id
         ];
 
-        return response()->json([
-            'code' => 200,
-            'data' => $dataReturn,
-            'message' => 'Thêm bình luận thành công'
-        ]);
+        return Helper::getResponseJson(200, 'Thêm bình luận thành công', $dataReturn, 'save comment');
     }
 
     /**
@@ -86,44 +79,21 @@ class CommentController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, $id)
-    {
+    {   //can update
+        $action = "update comment";
         if (!$id || !$request->comment) 
-            return response()->json(
-                [
-                    'code' => 404,
-                    'message' => "Chưa có id của bình luận hoặc bình luận trống"
-                ]
-        );
+            return  Helper::getResponseJson(404, "Chưa có id của bình luận hoặc bình luận trống", [], $action);
 
         $commentContent = $request->comment;
         $comment = $this->commentInterface->find($id);
-        
-        if (! $comment) {
-            return response()->json(
-                [
-                    'code' => 404,
-                    'message' => "Không có bình luận có id = ". $id
-                ]
-            );
-        }
-
-        if ($comment->user_id !== $this->ownerUser->id) {
-            response()->json(
-                [
-                    'code' => 401,
-                    'message' => "Không phải bình luận của bạn nên không thể sửa."
-                ]
-            );
-        }
+        if (! $comment) 
+            return  Helper::getResponseJson(404, "Không có bình luận có id = ". $id, [], $action);
+        if ($comment->user_id !== $this->ownerUser->id) 
+            return  Helper::getResponseJson(404, "Không phải bình luận của bạn nên không thể sửa.", [], $action);
 
         $comment = $this->commentInterface->update($comment->id, ['content' => $commentContent]);
-        return response()-> json(
-            [
-                'code' => 200,
-                'message' => "Cập nhật bình luận thành công",
-                'comment' => $comment
-            ]
-        );
+        return  Helper::getResponseJson(200, "Cập nhật bình luận thành công", ['comment' => $comment], $action);
+    
     }
 
     /**
@@ -134,32 +104,17 @@ class CommentController extends Controller
      */
     public function destroy($id)
     {
+        $action = "delete message";
         $comment = $this->commentInterface->find($id);
 
-        if (!$comment) {
-            return response()->json(
-                [
-                    'code' => 404,
-                    'message' => "Không có bình luận có id = ". $id
-                ]
-            );
-        }
-        if ($comment->user_id !== $this->ownerUser->id) {
-            response()->json(
-                [
-                    'code' => 401,
-                    'message' => "Không phải bình luận của bạn nên không thể xóa."
-                ]
-            );
-        }
+        if (! $comment) 
+            return  Helper::getResponseJson(404, "Không có bình luận có id = ". $id, [], $action);
+
+        if ($comment->user_id !== $this->ownerUser->id) 
+            return  Helper::getResponseJson(404, "Không phải bình luận của bạn nên không thể sửa.", [], $action);
 
         $this->commentInterface->delete($id);
-        return response()->json(
-            [
-                'code' => 200,
-                'message' => 'Xóa bình luận thành công'
-            ]
-        );
+        return  Helper::getResponseJson(200, 'Xóa bình luận thành công.', [], $action);
     }
 
     /**
