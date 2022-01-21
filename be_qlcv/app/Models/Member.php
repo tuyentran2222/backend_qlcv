@@ -11,8 +11,9 @@ class Member extends Model
 {
     use HasFactory;
     protected $tables = "member";
+    
     protected $fillable = [
-        'projectId', 'userId'
+        'projectId', 'userId', 'role'
     ];
 
     public function projects() {

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Member;
 use App\Models\Project;
+use App\Repositories\Member\MemberInterface;
+use App\Repositories\Project\ProjectInterface;
 use Illuminate\Http\Request;
 
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -14,10 +16,14 @@ use Illuminate\Support\Facades\DB;
 class ProjectController extends Controller
 {
     protected $user;
+    protected ProjectInterface $projectInterface;
+    protected MemberInterface $memberInterface;
 
-    public function __construct()
+    public function __construct(ProjectInterface $projectRepository, MemberInterface $memberRepository)
     {
         $this->user = JWTAuth::parseToken()->authenticate();
+        $this->projectInterface = $projectRepository;
+        $this->memberInterface = $memberRepository;
     }
     /**
      * Display a listing of the resource.
@@ -26,32 +32,30 @@ class ProjectController extends Controller
      */
     public function index(Request $request)
     {
-        $user = UserController::user($request);
-        if (!$user) return response()->json(
-            [
-                'status' => 'error',
-                'message'=>"Bạn chưa đăng nhập vào hệt thống",
-                'code' => 400
-            ]
-        );
-
-        $projects = DB::table('members')
-        ->join('projects', 'members.projectId' , '=' , 'projects.id')
-        ->where('userId', $user->id)->orderBy('projects.created_at','desc')->get();
+        //get all projects by user id
+        $projects = $this->projectInterface->getAllProjectsByUser($this->user->id);
 
         $projectArray = array();
         $index = 0;
+        $arrayRole = ["Owner", "Member" , "Developer", "Maintainace" , "Customer Support", "BA", "Leader", "Project Management"];
         if (!empty($projects)) {
             foreach($projects as  $project) {
                 $projectArray[$index] = $project;
                 $projectArray[$index]->index = $index;
-                if ($project->userId === $project->ownerId) $projectArray[$index]->role = "Chủ sở hữu";
-                else $projectArray[$index]->role = "Thành viên";
+                $projectArray[$index]->role = $arrayRole[$project->role];
                 $index++;
             }
             
         }
-        return $projectArray;
+
+        return response()->json([
+            [
+                'code' => 200,
+                'message' => "Trả danh sách dự án thành công.",
+                'data' => $projectArray
+            ]
+        ]);
+
     }
 
     /**
@@ -72,24 +76,7 @@ class ProjectController extends Controller
      */
     public function store(Request $request)
     {
-        $user = UserController::user($request);
-        if (!$user) return response()->json(
-            [
-                'status' => 'error',
-                'message'=>"Bạn chưa đăng nhập vào hệt thống",
-                'code' => 400
-            ]
-        );
-        
-        $validator = Validator::make($request->all(),
-        [
-            'projectCode' => 'required|string',
-            'projectName' => 'required|string',
-            'projectStart' => 'required|date',
-            'projectEnd' => 'date',
-            'partner' => 'string|required',
-            'status' => 'integer|required',
-        ]);
+        $validator = Validator::make($request->all(), $this->getProjectRulesValidation());
 
         if ($validator->fails()) {
             return response()->json(
@@ -101,26 +88,31 @@ class ProjectController extends Controller
                 ]
             );
         }
+
+        $projectArray = [
+            'projectCode' => $request->projectCode,
+            'projectName' => $request->projectName,
+            'projectStart' => $request->projectStart,
+            'projectEnd'=> $request->projectEnd,
+            'partner' => $request->partner,
+            'status' => $request->status,
+            'ownerId' => $this->user->getId()
+        ];
  
-        $project = new Project();
-        $project->projectCode = $request->projectCode;
-        $project->projectName = $request->projectName;
-        $project->projectStart=$request->projectStart;
-        $project->projectEnd= $request->projectEnd;
-        $project->partner= $request->partner;
-        $project->status= $request->status;
-        $project->ownerId = $this->user->getId();
-        
-        if ($this->user->projects()->save($project)) {
-            $member = new Member();
-            $member->userId = $this->user->getId();
-            $member->projectId = $project->id;
-            $member->save();
+        $project = $this->projectInterface->create($projectArray);
+
+        if ($project) {
+            $memberArray = [
+                'userId' => $this->user->getId(),
+                'role' => 0,
+                'projectId' => $project->id
+            ];
+            $this->memberInterface->create($memberArray);
             return response()->json([
                 'status' => 'success',
                 'code' => 200,
                 "message" => "Thêm dự án thành công",
-                'data' => $project->toArray()
+                'data' => $project
             ]);
         }
         else
@@ -160,24 +152,7 @@ class ProjectController extends Controller
      */
     public function edit(int $id, Request $request)
     {
-        $user = UserController::user($request);
-        if (!$user) return response()->json(
-            [
-                'status' => 'error',
-                'message'=>"Bạn chưa đăng nhập vào hệt thống",
-                'code' => 400
-            ]
-        );
-        $project = Project::find($id);
-        // if ($project->ownerId !== $user->id) {
-        //     return response()->json(
-        //         [
-        //             'status' => 'error',
-        //             'message'=>"Bạn không thể sửa do không phải là chủ sở hữu",
-        //             'code' => 400
-        //         ]
-        //     );
-        // }
+        $project = $this->projectInterface->find($id);
         if ($project) {
             return response()->json([
                 'status'=> 'success',
@@ -189,7 +164,7 @@ class ProjectController extends Controller
             return response()->json([
                 'status'=> 'error',
                 'code' => 404,
-                'message' => 'No project ID Found'
+                'message' => 'Không tìm thấy dự án!'
             ]);
         }
         
@@ -203,19 +178,10 @@ class ProjectController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, Project $project)
-    {
+    { 
         //Validate data
         $data = $request->only('projectCode', 'projectName', 'projectStart', 'projectEnd', 'partner', 'status');
-        $validator = Validator::make($request->all(),
-        [
-            'projectCode' => 'required|string',
-            'projectName' => 'required|string',
-            'projectStart' => 'required|date',
-            'projectEnd' => 'date',
-            'partner' => 'string|required',
-            'status' => 'integer|required',
-        ]);
-        
+        $validator = Validator::make($request->all(), $this->getProjectRulesValidation());
         if ($validator->fails()) {
             return response()->json(
                 [
@@ -227,6 +193,7 @@ class ProjectController extends Controller
                 400
             );
         }
+        
         $projectArray = [
             'projectCode' => $request->projectCode,
             'projectName' => $request->projectName,
@@ -235,8 +202,9 @@ class ProjectController extends Controller
             'partner' => $request->partner,
             'status' => $request->status
         ];
+
         //Request is valid, update project
-        $project = $project->update($projectArray);
+        $project = $this->projectInterface->update($project->id, $projectArray);
 
         //project updated, return success response
         return response()->json([
@@ -255,20 +223,23 @@ class ProjectController extends Controller
      */
     public function destroy(int $project)
     {   
-        $project = Project::find($project);
+        $project= $this->projectInterface->find((int)($project));
+
         if (!$project) return response()->json([
             'status' => 'fails',
             'code' => 401,
             'message' => 'Xóa project thất bại do project không tồn tại.'
         ]);
+
         if ($project->ownerId !== $this->user->id) 
             return response()->json([
                 'status' => 'fails',
                 'code' => 401,
                 'message' => 'Xóa project thất bại do bạn không phải chủ sở hữu project.'
             ]);
-        DB::table('members')->where('projectId', $project->id)->delete();
-        $project->delete();
+
+        $this->projectInterface->delete($project->id);
+
         return response()->json([
             'status' => 'success',
              'code' => 200,
@@ -277,9 +248,21 @@ class ProjectController extends Controller
     }
     
     public function getCountProjects() {
+        $count = $this->memberInterface->getCountProjectByUser($this->user->id);
         return response()->json([
             'code' => 200,
-            'data' => Member::where('userId',$this->user->id)->get()->count()
+            'data' => $count
         ]);
+    }
+
+    public function getProjectRulesValidation($type = "create") {
+        return [
+            'projectCode' => 'required|string',
+            'projectName' => 'required|string',
+            'projectStart' => 'required|date',
+            'projectEnd' => 'date',
+            'partner' => 'string|required',
+            'status' => 'integer|required',
+        ];
     }
 }

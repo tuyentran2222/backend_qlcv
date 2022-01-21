@@ -25,7 +25,9 @@ class Task extends Model
         'levelCompletion',
         'taskPersonId',
         'parentId',
-        'parentList'
+        'projectId',
+        'parentList',
+        'ownerId'
     ];
 
     public static function equal($task1, $task2) {
@@ -42,5 +44,9 @@ class Task extends Model
 
     public function comments() {
         return $this->hasMany(Comment::class,'task_id','id');
+    }
+
+    public function executors() {
+        return $this->hasMany(Executor::class,'taskId','id');
     }
 }

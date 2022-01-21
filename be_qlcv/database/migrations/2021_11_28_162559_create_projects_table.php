@@ -22,6 +22,7 @@ class CreateProjectsTable extends Migration
             $table->date('projectEnd', $precision = 0);
             $table->string('partner');
             $table->integer('status');
+            $table->unsignedBigInteger('projectId');
             $table->unsignedBigInteger('ownerId');
             $table->foreign('ownerId')
             ->references('id')

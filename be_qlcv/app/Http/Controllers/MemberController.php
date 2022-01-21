@@ -11,14 +11,23 @@ use Illuminate\Support\Facades\Validator;
 use App\Models\Project;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
+use App\Repositories\Member\MemberInterface;
+use App\Repositories\Project\ProjectInterface;
+use App\Repositories\User\UserInterface;
+
 class MemberController extends Controller
 {
     protected $project;
-    protected $ownerUser;
-
-    public function __construct()
+    protected $user;
+    protected UserInterface $userInterface;
+    protected MemberInterface $memberInterface;
+    protected ProjectInterface $projectInterface;
+    public function __construct(UserInterface $userRepository, MemberInterface $memberRepository, ProjectInterface $projectRepository)
     {
-        $this->ownerUser = JWTAuth::parseToken()->authenticate();
+        $this->user = JWTAuth::parseToken()->authenticate();
+        $this->userInterface = $userRepository;
+        $this->memberInterface = $memberRepository;
+        $this->projectInterface = $projectRepository;
     }
     /**
      * Display a listing of the resource.
@@ -27,7 +36,7 @@ class MemberController extends Controller
      */
     public function index(Request $request)
     {
-        $userId = $this->ownerUser->getId();
+        $userId = $this->user->getId();
         $projectId = isset($request->project) ? $request->project : '';
         if (!is_numeric($projectId) || $projectId === null) 
             return response()->json([
@@ -36,30 +45,23 @@ class MemberController extends Controller
                 'code' => 400
             ]);
         $check = false;
-        $project = Project::find($projectId);
+        $project = $this->projectInterface->find($projectId);
         if (!$project) return response()->json([
             'code' => 404,
             'message' => "Project không tồn tại"
         ]);
-        $ownerId = DB::table('projects')->where('id', $project->id)->select('ownerId')->first();
-        $ownerProject = User::find($ownerId->ownerId);
+        // $ownerId = DB::table('projects')->where('id', $project->id)->select('ownerId')->first();
+        $ownerId = $project->ownerId;
+        $ownerProject = $this->userInterface->find($ownerId);
         $memberArray = array();
         if ($ownerId->ownerId === $ownerProject->id) $check=true;
-        $memberArray[0] = [
-            'index'=> 1 ,
-            'id'=> $ownerId->ownerId,
-            'role' => "Chủ dự án",
-            'username' =>$ownerProject->username,
-            'email' => $ownerProject->email,
-            'projectId' =>$projectId
-        ];
-            
         $member = $project->members()->get();
-        $index = 1;
+        $index = 0;
+        $arrayRole = ["Owner", "Member" , "Developer", "Maintenance" , "Customer Support", "BA", "Leader", "Project Management"];
         foreach ($member as $m ) {
             $memberArray[$index] = DB::table('users')->select('email','username','id') -> where('id', $m->userId)->first();
             $memberArray[$index]->index = $index + 1;
-            $memberArray[$index]->role ="Thành viên";
+            $memberArray[$index]->role = $arrayRole[$m->role];
             $memberArray[$index]->projectId = $projectId;
             $index ++;
             if ($m->userId === $userId) $check = true;
@@ -99,18 +101,20 @@ class MemberController extends Controller
      */
     public function store(Request $request)
     {
-        
         $email = $request->email;
-        $ownerId = $this->ownerUser->getId();
+        $role = $request->role;
+        $ownerId = $this->user->getId();
         $projectId = isset($request->project) ? $request->project : '';
 
         $validator = Validator::make([
             'projectId' => $projectId,
-            'email' => $email
+            'email' => $email,
+            'role' => $role
         ],
         [
             'projectId' => 'required|integer',
             'email' => 'required|email',
+            'role' => 'integer'
         ]);
         
         if ($validator->fails()) {
@@ -124,7 +128,7 @@ class MemberController extends Controller
             );
         }
 
-        $user = DB::table('users')->where('email', $email)->first();
+        $user = $this->userInterface->getUserByEmail($email);
         if (!$user) return response()->json(
             [
                 'status' => 'error',
@@ -132,12 +136,16 @@ class MemberController extends Controller
                 'code' => 433
             ],
         );
+        $memberArray = [
+            'projectId' => $projectId,
+            'userId' => $user->id,
+            'role' => $role,
+        ];
         
         $userId = $user->id;
-        $member = new Member();
-        $member->projectId = $projectId;
-        $member->userId = $userId;
-        $project = Project::find($projectId);
+   
+        $project = $this->projectInterface->find($projectId);
+        $arrayRole = ["Owner", "Member" , "Developer", "Maintenance" , "Customer Support", "BA", "Leader", "Project Management"];
         if ($ownerId === $project->getOwnerId()) {
             $count = DB::table('members')->where('projectId',$projectId)->where('userId', $userId)->count();
             if ($count) return response()->json([
@@ -145,11 +153,12 @@ class MemberController extends Controller
                 'message' => 'Thành viên đã được thêm trước đó',
                 'code' => 434
             ]);
-            if ($project->members()->save($member)) {
+            $member = $this->memberInterface->create($memberArray);
+            if ($member) {
                 $data = [
                     'email' => $email,
                     'username' => $user->username,
-                    'role' => 'Thành viên',
+                    'role' => $arrayRole[$role],
                     'id' => $user->id
                 ];
                 return response()->json([
@@ -177,40 +186,6 @@ class MemberController extends Controller
     }
 
     /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function show($id)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function edit($id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, $id)
-    {
-        //
-    }
-
-    /**
      * Remove the specified resource from storage.
      *
      * @param  int  $id
@@ -218,30 +193,29 @@ class MemberController extends Controller
      */
     public function destroy($projectId, $id, Request $request)
     {   
-        $user = UserController::user($request);
-        $project = Project::find($projectId);
-        if ($project->ownerId !== $user->id) 
-        return response()->json([
-            'status' => 'fails',
-            'message' => 'Bạn không thể xóa do không phải là chủ sở hữu',
-            'code' => 422
-        ]);
-        $member = DB::table('members')->where('userId' , $id)->where('projectId', $projectId);
-        if ( $id == $this->ownerUser->id) {
+        $project = $this->projectInterface->find($projectId);
+        if ($project->ownerId !== $this->user->id) 
+            return response()->json([
+                'status' => 'fails',
+                'message' => 'Bạn không thể xóa do không phải là chủ sở hữu',
+                'code' => 422
+            ]);
+        if ( $id == $this->user->id) {
             return response()->json([
                 'status' => 'fails',
                 'message' => 'Bạn không thể tự xóa mình ra khỏi dự án của bạn',
                 'code' => 422
             ]);
         }
-        
+
+        $member = $this->memberInterface->findMember($id, $projectId);
         if (!$member) return response()->json([
             'status' => 'fails',
             'message' => 'Xóa thành viên thất bại.',
             'code' => 400
         ]);
 
-        $member->delete();
+        $this->memberInterface->deleteMember($id, $projectId);
         return response()->json([
             'status' => 'success',
             'message' => 'Xóa thành viên thành công.',
@@ -249,8 +223,43 @@ class MemberController extends Controller
         ]);
     }
 
-    public function getMemberInfo() {
+    public function getMemberInfo(Request $request) {
+        $userId = $this->user->getId();
+        $projectId = isset($request->project) ? $request->project : '';
 
+        if (!is_numeric($projectId) || $projectId === null) 
+            return response()->json([
+                'status' =>'error',
+                'description' => 'Id của dự án là một số hoặc không được để trống.',
+                'code' => 400
+            ]);
+        $check = false;
+
+        $project = $this->projectInterface->find($projectId);
+        if (!$project) return response()->json([
+            'code' => 404,
+            'message' => "Dự án không tồn tại"
+        ]);
+
+        $ownerId = $project->ownerId;
+        $ownerProject = $this->userInterface->find($ownerId);
+        $memberArray = array();
+        
+        $members = $this->memberInterface->getAllMemberOfProject($project);
+        $index = 0;
+        $arrayRole = ["Owner", "Member" , "Developer", "Maintainace" , "Customer Support", "BA", "Leader", "Project Management"];
+        foreach ($members as $m ) {
+            $u = $this->userInterface->find($m->userId);
+            $memberArray[$index]['id'] = $u->id;
+            $memberArray[$index]['name'] = $u->username;
+            $index++;
+        }
+        return response()->json(
+            [
+                'code' => 200,
+                'data' => $memberArray
+            ]
+        );
     }
 
 }
