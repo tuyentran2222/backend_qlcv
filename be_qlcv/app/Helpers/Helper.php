@@ -2,11 +2,11 @@
 
 namespace App\Helpers;
 
-use Ramsey\Uuid\Type\Integer;
-
+use Tymon\JWTAuth\Facades\JWTAuth;
+use Exception;
 class Helper
 {
-    public static function getResponseArray($code, $message, $data = [], $action = '', $error =[])
+    public static function getResponseJson($code, $message, $data = [], $action = '', $error =[])
     {
         return response()->json([
             'code' => $code,
@@ -15,5 +15,13 @@ class Helper
             'action' => $action,
             'error' => $error
         ]);
+    }
+    
+    public static function getUser() {
+        try {
+            return JWTAuth::parseToken()->authenticate();
+        } catch (Exception $e) {
+            return null;
+        }
     }
 }

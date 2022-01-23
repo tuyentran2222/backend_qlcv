@@ -49,4 +49,12 @@ class Task extends Model
     public function executors() {
         return $this->hasMany(Executor::class,'taskId','id');
     }
+
+    public function project() {
+        return $this->belongsTo(Project::class, 'projectId', 'id');
+    }
+
+    public function getOwnerIdOfProject() {
+        return $this->project()->get()->first()->ownerId;
+    }
 }

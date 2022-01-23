@@ -6,29 +6,28 @@ use App\Models\Comment;
 use App\Models\Executor;
 use App\Models\Task;
 use Illuminate\Http\Request;
-use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\DB;
 use App\Models\Project;
 use App\Repositories\Member\MemberInterface;
 use App\Repositories\Project\ProjectInterface;
 use App\Repositories\Task\TaskInterface;
 use App\Helpers\Helper;
+use Illuminate\Auth\Access\AuthorizationException;
+
 class TaskController extends Controller
 {
     protected $project;
     protected $user;
-    protected $userId;
+
     protected TaskInterface $taskInterface;
     protected ProjectInterface $projectInterface;
     protected MemberInterface $memberInterface;
+    
     public function __construct(TaskInterface $taskRepository, ProjectInterface $projectRepository, MemberInterface $memberRepository)
     {
-        $this->user = JWTAuth::parseToken()->authenticate();
         $this->taskInterface = $taskRepository;
         $this->projectInterface = $projectRepository;
         $this->memberInterface = $memberRepository;
-        $this->userId = $this->user->id;
     }
     /**
      * Display a listing of the resource.
@@ -39,12 +38,13 @@ class TaskController extends Controller
     {
         //can update
         $action = "get list of task";
+        $user = Helper::getUser();
         $parentTask = array();
         $tasks = $this->taskInterface->getAllTasksByProjectId($id);
-        
-        $checkMemberInProject = $this->memberInterface->checkMemberInProject($this->user->id, $id);
+
+        $checkMemberInProject = $this->memberInterface->checkMemberInProject($user->id, $id);
         if (!$checkMemberInProject)
-            return Helper::getResponseJson(401, 'Bạn không thuộc project này', [], $action);
+            return Helper::getResponseJson(401, 'Không có quyền xem dự án vì không thuộc dự án', [], $action);
  
         foreach ($tasks as $index => $task) {
             $parentTask[$index] = $task;
@@ -56,7 +56,7 @@ class TaskController extends Controller
             'count' => count($parentTask)
         ];
 
-        return Helper::getResponseJson(401, 'Thành công', $dataReturn, $action);
+        return Helper::getResponseJson(200, 'Thành công', $dataReturn, $action);
 
         // return response()->json([
         //     'data' => $parentTask,
@@ -75,6 +75,7 @@ class TaskController extends Controller
     public function store(Request $request, $parentId, $projectId)
     {
         $action = "create task";
+        $user = Helper::getUser();
         $project = Project::find($projectId);
         $taskRules = $this->getTaskRulesValidation();
         $validator = Validator::make($request->all(), $taskRules);
@@ -94,7 +95,7 @@ class TaskController extends Controller
             'levelCompletion' => $request->levelCompletion,
             'taskPersonId' => $request->taskPersonIds,
             'projectId' => $projectId,
-            'ownerId' => $this->user->id,
+            'ownerId' => $user->id,
             'parentId' => ($parentId) ? $parentId : null,
         ];
         
@@ -130,14 +131,6 @@ class TaskController extends Controller
     {
         $action = "show task";
         $task = $this->taskInterface->find($id);
-        $checkMemberInProject = $this->memberInterface->checkMemberInProject($this->user->id, $id);
-        if (!$checkMemberInProject) 
-        return Helper::getResponseJson(401, 'Bạn không thuộc project này', [], $action);
-
-        if (!$task) {
-            return Helper::getResponseJson(404, 'Công việc không tồn tại', [], $action);
-        }
-    
         return Helper::getResponseJson(200, 'Thành công', $task, $action);
     }
 
@@ -151,14 +144,8 @@ class TaskController extends Controller
     {
         //can update
         $action = "edit task";
+        $user = Helper::getUser();
         $task = $this->taskInterface->find($id);
-        $checkMemberInProject = $this->memberInterface->checkMemberInProject($this->user->id, $task->projectId);
-        if (!$checkMemberInProject) 
-            return Helper::getResponseJson(401, 'Bạn không thuộc project này', [], $action);
-     
-        if (!$task) {
-            return Helper::getResponseJson(404, 'Công việc không tồn tại', [], $action);
-        }
         
         //get comments of task
         $comments = $task->comments()->orderBy('created_at', 'desc')->get();
@@ -208,14 +195,23 @@ class TaskController extends Controller
     public function update(Request $request, $id)
     {
         $action = "update task";
-        $project = $this->taskInterface->find($id);
+        $task = $this->taskInterface->find($id);
         $taskRules = $this->getTaskRulesValidation('update');
         $validator = Validator::make($request->all(), $taskRules);
 
         if ($validator->fails()) {
             return Helper::getResponseJson(406, "Thông tin nhập vào chưa hợp lệ", [], $action, $validator->errors());
         }
+        
+        $checkAuthorization = false;
+        try {
+            $checkAuthorization = $this->authorize('update',$task);
+        }
+        catch ( AuthorizationException $e) {
 
+        }
+
+        if (! $checkAuthorization) return Helper::getResponseJson(401, 'Bạn không có quyền sửa công việc', [], $action);
         $taskArray = [
             'taskCode' => $request->taskCode,
             'taskName' => $request->taskName,
@@ -227,9 +223,9 @@ class TaskController extends Controller
             'levelCompletion' => $request->levelCompletion,
             'taskPersonId' => $request->taskPersonIds
         ];
-        //Request is valid, update project
+        //Request is valid, update task
         $task = $this->taskInterface->update($id, $taskArray);
-        //project updated, return success response
+        //task updated, return success response
         return Helper::getResponseJson(200, 'Dự án công việc thành công', $task, $action);
     }
 
@@ -243,20 +239,23 @@ class TaskController extends Controller
     {
         $action = "delete task";
         $task = $this->taskInterface->find($id);
-        if (!$task) 
-            return Helper::getResponseJson(404, "Không tìm thấy công việc tương ứng", [], $action);
+        $checkAuthorization = false;
+        try {
+            $checkAuthorization = $this->authorize('update',$task);
+        }
+        catch ( AuthorizationException $e) {
 
-        $checkMemberInProject = $this->memberInterface->checkMemberInProject($this->user->id, $task->projectId);
-        if (!$checkMemberInProject) 
-            return Helper::getResponseJson(401, 'Bạn không thuộc dự án này', [], $action);
-
+        }
+    
+        if (! $checkAuthorization) return Helper::getResponseJson(401, 'Bạn không có quyền xóa công việc', [], $action);
         $task = $this->taskInterface->delete($id);
             return Helper::getResponseJson(200, "Xóa công việc thành công", [], $action);
     }
 
-    public function getAllComments(int $taskId) {
+    public function getAllComments(int $id) {
         $action = "get all comments";
-        $task = $this->taskInterface->find($taskId);
+        $task = $this->taskInterface->find($id);
+        $user = Helper::getUser(); 
         $comments = $this->taskInterface->getAllCommentsOfTask($task);
         $arrayComments = [];
         foreach ($comments as $index => $comment) {

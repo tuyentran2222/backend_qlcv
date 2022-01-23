@@ -47,11 +47,11 @@ Route::group(['middleware' => ['jwt.verify']], function() {
 
     Route::get('projects/{id}/tasks', [TaskController::class, 'index']);
     Route::get('tasks/assigned',  [TaskController::class, 'getAssignedTask']);
-    Route::get('task/{taskId}/comments',  [TaskController::class, 'getAllComments']);
+    Route::get('task/{id}/comments',  [TaskController::class, 'getAllComments'])->middleware('checkUserInProject');
     Route::post('tasks/create/{parentId}/projects/{projectId}',  [TaskController::class, 'store']);
-    Route::get('tasks/edit/{taskId}',  [TaskController::class, 'edit']);
-    Route::delete('tasks/delete/{taskId}',  [TaskController::class, 'destroy']);
-    Route::patch('tasks/update/{taskId}',  [TaskController::class, 'update']);
+    Route::get('tasks/edit/{id}',  [TaskController::class, 'edit'])->middleware('checkUserInProject');
+    Route::delete('tasks/delete/{id}',  [TaskController::class, 'destroy'])->middleware('checkUserInProject');
+    Route::patch('tasks/update/{id}',  [TaskController::class, 'update'])->middleware('checkUserInProject');
     Route::post('tasks/{taskId}/comment/add',  [CommentController::class, 'store']);
     Route::get('tasks/getCount',  [TaskController::class, 'getCountAssignedTask']);
     Route::get('tasks/overtime',  [TaskController::class, 'getOvertimeTask']);

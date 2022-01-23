@@ -21,7 +21,6 @@ class ProjectController extends Controller
 
     public function __construct(ProjectInterface $projectRepository, MemberInterface $memberRepository)
     {
-        $this->user = JWTAuth::parseToken()->authenticate();
         $this->projectInterface = $projectRepository;
         $this->memberInterface = $memberRepository;
     }
@@ -32,9 +31,11 @@ class ProjectController extends Controller
      */
     public function index(Request $request)
     {
+        $user = Helper::getUser();
         $action = "get all projects";
+
         //get all projects by user id
-        $projects = $this->projectInterface->getAllProjectsByUser($this->user->id);
+        $projects = $this->projectInterface->getAllProjectsByUser($user->id);
         $projectArray = array();
         $index = 0;
 
@@ -68,6 +69,7 @@ class ProjectController extends Controller
     public function store(Request $request)
     {
         $action = "create project";
+        $user = Helper::getUser();
         $validator = Validator::make($request->all(), $this->getProjectRulesValidation());
 
         if ($validator->fails()) {
@@ -81,14 +83,14 @@ class ProjectController extends Controller
             'projectEnd'=> $request->projectEnd,
             'partner' => $request->partner,
             'status' => $request->status,
-            'ownerId' => $this->user->getId()
+            'ownerId' => $user->getId()
         ];
  
         $project = $this->projectInterface->create($projectArray);
 
         if ($project) {
             $memberArray = [
-                'userId' => $this->user->getId(),
+                'userId' => $user->getId(),
                 'role' => 0,
                 'projectId' => $project->id
             ];
@@ -106,8 +108,9 @@ class ProjectController extends Controller
      */
     public function show(Project $project, $id)
     {
+        $user = Helper::getUser();
         $action = "show project";
-        $project = $this->user->projects()->find($id);
+        $project = $user->projects()->find($id);
     
         if (!$project) 
             return Helper::getResponseJson(400, "Dự án không tồn tại", [], $action);
@@ -149,7 +152,19 @@ class ProjectController extends Controller
         if ($validator->fails()) {
             return Helper::getResponseJson(400, "Thông tin nhập vào chưa hợp lệ", [], $action, $validator->errors());
         }
-        
+
+        $check = false;
+        try{
+            $check = $this->authorize('update', $project);
+        }
+        catch(\Illuminate\Auth\Access\AuthorizationException $e) {
+            
+        }
+  
+        if (!$check) {
+            return Helper::getResponseJson(401, "Không có quyền update dự án", [], $action);
+        }
+
         $projectArray = [
             'projectCode' => $request->projectCode,
             'projectName' => $request->projectName,
@@ -175,23 +190,31 @@ class ProjectController extends Controller
     public function destroy(int $project)
     {   
         $action = "delete project";
+        $user = Helper::getUser();
         $project= $this->projectInterface->find((int)($project));
-        if (!$project) return response()->json([
-            'status' => 'fails',
-            'code' => 401,
-            'message' => 'Xóa project thất bại do project không tồn tại.'
-        ]);
+        if (!$project)
+        return Helper::getResponseJson(404, 'Xóa dự án thất bại do dự án không tồn tại.', [], $action);
+    
+        $check = false;
+        try{
+            $check = $this->authorize('delete', $project);
+        }
+        catch(\Illuminate\Auth\Access\AuthorizationException $e) {
+            
+        }
 
-        if ($project->ownerId !== $this->user->id) 
-            return Helper::getResponseJson(401, 'Xóa project thất bại do bạn không phải chủ sở hữu project.', [], $action);
+        if (!$check) {
+            return Helper::getResponseJson(403, "Không có quyền xóa dự án", [], $action);
+        }
 
         $this->projectInterface->delete($project->id);
-        return Helper::getResponseJson(200, 'Xóa project thành công.', [], $action);
+        return Helper::getResponseJson(200, 'Xóa dự án thành công.', [], $action);
     }
     
     public function getCountProjects() {
         $action = "get number of projects";
-        $count = $this->memberInterface->getCountProjectByUser($this->user->id);
+        $user = Helper::getUser();
+        $count = $this->memberInterface->getCountProjectByUser($user->id);
         return Helper::getResponseJson(200, 'Thành công.', $count, $action);
     }
 
@@ -205,4 +228,5 @@ class ProjectController extends Controller
             'status' => 'integer|required',
         ];
     }
+
 }

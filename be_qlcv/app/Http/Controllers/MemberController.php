@@ -25,7 +25,6 @@ class MemberController extends Controller
     const ROLE_ARRAY = ["Owner", "Member" , "Developer", "Maintenance" , "Customer Support", "BA", "Leader", "Project Management"];
     public function __construct(UserInterface $userRepository, MemberInterface $memberRepository, ProjectInterface $projectRepository)
     {
-        $this->user = JWTAuth::parseToken()->authenticate();
         $this->userInterface = $userRepository;
         $this->memberInterface = $memberRepository;
         $this->projectInterface = $projectRepository;
@@ -37,9 +36,10 @@ class MemberController extends Controller
      */
     public function index(Request $request)
     {
+        $user = Helper::getUser();
         //can update
         $action = "get members of project";
-        $userId = $this->user->getId();
+        $userId = $user->id;
         $projectId = isset($request->project) ? $request->project : '';
 
         if (!is_numeric($projectId) || $projectId === null) 
@@ -92,10 +92,11 @@ class MemberController extends Controller
      */
     public function store(Request $request)
     {
+        $user = Helper::getUser();
         $action = "add member";
         $email = $request->email;
         $role = $request->role;
-        $ownerId = $this->user->getId();
+        $ownerId = $user->id;
         $projectId = isset($request->project) ? $request->project : '';
 
         $validator = Validator::make([
@@ -154,12 +155,13 @@ class MemberController extends Controller
      */
     public function destroy($projectId, $id, Request $request)
     {   
+        $user = Helper::getUser();
         $action = "delete member";
         $project = $this->projectInterface->find($projectId);
-        if ($project->ownerId !== $this->user->id) 
+        if ($project->ownerId !== $user->id) 
             return Helper::getResponseJson(422, 'Bạn không thể xóa do không phải là chủ sở hữu', [], $action);
             
-        if ( $id == $this->user->id) {
+        if ( $id == $user->id) {
             return Helper::getResponseJson(422, 'Bạn không thể tự xóa mình ra khỏi dự án của bạn', [], $action);
         }
 

@@ -14,7 +14,6 @@ class CommentController extends Controller
     private CommentInterface $commentInterface;
     public function __construct(CommentInterface $commentRepository)
     {
-        $this->ownerUser = JWTAuth::parseToken()->authenticate();
         $this->commentInterface = $commentRepository;
     }
     /**
@@ -44,10 +43,11 @@ class CommentController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function store($taskId, Request $request){
+        $user = Helper::getUser();
         $commentArray = [
             'content' => $request->comment,
             'task_id' => $taskId,
-            'user_id' => $this->ownerUser->id
+            'user_id' => $user->id
         ];
 
         $rules = $this->getCommentRulesValidation();
@@ -64,7 +64,7 @@ class CommentController extends Controller
             'time' => $comment->created_at,
             'name' => $comment->user()->get()->first()->username,
             'avatar' => $comment->user()->get()->first()->avatar,
-            'id' => $this->ownerUser->id,
+            'id' => $user->id,
             'comment_id' => $comment->id
         ];
 
@@ -80,6 +80,7 @@ class CommentController extends Controller
      */
     public function update(Request $request, $id)
     {   //can update
+        $user = Helper::getUser();
         $action = "update comment";
         if (!$id || !$request->comment) 
             return  Helper::getResponseJson(404, "Chưa có id của bình luận hoặc bình luận trống", [], $action);
@@ -88,7 +89,7 @@ class CommentController extends Controller
         $comment = $this->commentInterface->find($id);
         if (! $comment) 
             return  Helper::getResponseJson(404, "Không có bình luận có id = ". $id, [], $action);
-        if ($comment->user_id !== $this->ownerUser->id) 
+        if ($comment->user_id !== $user->id) 
             return  Helper::getResponseJson(404, "Không phải bình luận của bạn nên không thể sửa.", [], $action);
 
         $comment = $this->commentInterface->update($comment->id, ['content' => $commentContent]);
@@ -104,13 +105,14 @@ class CommentController extends Controller
      */
     public function destroy($id)
     {
+        $user = Helper::getUser();
         $action = "delete message";
         $comment = $this->commentInterface->find($id);
 
         if (! $comment) 
             return  Helper::getResponseJson(404, "Không có bình luận có id = ". $id, [], $action);
 
-        if ($comment->user_id !== $this->ownerUser->id) 
+        if ($comment->user_id !== $user->id) 
             return  Helper::getResponseJson(404, "Không phải bình luận của bạn nên không thể sửa.", [], $action);
 
         $this->commentInterface->delete($id);

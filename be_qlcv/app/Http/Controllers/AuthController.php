@@ -46,16 +46,7 @@ class AuthController extends Controller
     }
 
     public function register(Request $request) {
-        $validator = Validator::make($request->all(),
-        [
-            'email' => 'required|email|unique:users',
-            'username' => 'required',
-            'password'=>'required|min:6',
-            'confirm_password' => 'required|min:6',
-            'firstname'=>'required',
-            'lastname' => 'required',
-            'gender' => 'required',
-        ]);
+        $validator = Validator::make($request->all(), $this->getUserRulesValidation());
 
         if ($validator->fails()) {
             return Helper::getResponseJson(400, "Đăng ký thất bại", [], 'register', $validator->errors());
@@ -140,5 +131,18 @@ class AuthController extends Controller
         } catch (JWTException $exception) {
             return  Helper::getResponseJson(500, 'Xin lỗi, bạn không thể đăng xuất.', [], 'logout');
         }
+    }
+
+    public function getUserRulesValidation() {
+        return 
+        [
+            'email' => 'required|email|unique:users',
+            'username' => 'required',
+            'password'=>'required|min:6',
+            'confirm_password' => 'required|min:6',
+            'firstname'=>'required',
+            'lastname' => 'required',
+            'gender' => 'required',
+        ];
     }
 }
