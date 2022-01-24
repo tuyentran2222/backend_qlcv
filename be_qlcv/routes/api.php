@@ -52,11 +52,11 @@ Route::group(['middleware' => ['jwt.verify']], function() {
     Route::get('tasks/edit/{id}',  [TaskController::class, 'edit'])->middleware('checkUserInProject');
     Route::delete('tasks/delete/{id}',  [TaskController::class, 'destroy'])->middleware('checkUserInProject');
     Route::patch('tasks/update/{id}',  [TaskController::class, 'update'])->middleware('checkUserInProject');
-    Route::post('tasks/{taskId}/comment/add',  [CommentController::class, 'store']);
     Route::get('tasks/getCount',  [TaskController::class, 'getCountAssignedTask']);
     Route::get('tasks/overtime',  [TaskController::class, 'getOvertimeTask']);
 
     //comment
+    Route::post('tasks/{id}/comment/add',  [CommentController::class, 'store'])->middleware('checkUserInProject');
     Route::delete('comments/delete/{id}', [CommentController::class, 'destroy']);
     Route::patch('comments/update/{id}', [CommentController::class, 'update']);
 

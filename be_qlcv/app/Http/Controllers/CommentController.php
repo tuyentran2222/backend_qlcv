@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\CommentEvent;
 use Illuminate\Http\Request;
 use App\Models\Comment;
 use App\Repositories\Comment\CommentInterface;
@@ -9,31 +10,14 @@ use CommentsTableSeeder;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\Validator;
 use App\Helpers\Helper;
+use Illuminate\Auth\Access\AuthorizationException;
+
 class CommentController extends Controller
 {
     private CommentInterface $commentInterface;
     public function __construct(CommentInterface $commentRepository)
     {
         $this->commentInterface = $commentRepository;
-    }
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-    */
-    public function show()
-    {
-        //
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
-    {
-        //
     }
 
     /**
@@ -42,19 +26,20 @@ class CommentController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store($taskId, Request $request){
+    public function store(int $id, Request $request){
+        $action = "create comment";
         $user = Helper::getUser();
         $commentArray = [
             'content' => $request->comment,
-            'task_id' => $taskId,
+            'task_id' => $id,
             'user_id' => $user->id
         ];
-
+    
         $rules = $this->getCommentRulesValidation();
         $validator = Validator::make($commentArray, $rules);
-
-        if ($validator->errors()) {
-            return  Helper::getResponseJson(400, "Thêm bình luận thất bại", [], 'save comment',$validator->errors());
+        
+        if (empty($validator->errors())) {
+            return  Helper::getResponseJson(400, "Thêm bình luận thất bại", [], $action ,$validator->errors());
         }
 
         $comment = $this->commentInterface->create($commentArray);
@@ -67,8 +52,9 @@ class CommentController extends Controller
             'id' => $user->id,
             'comment_id' => $comment->id
         ];
+        broadcast(new CommentEvent($user, 'message'));
 
-        return Helper::getResponseJson(200, 'Thêm bình luận thành công', $dataReturn, 'save comment');
+        return Helper::getResponseJson(200, 'Thêm bình luận thành công', $dataReturn, $action);
     }
 
     /**
@@ -87,9 +73,17 @@ class CommentController extends Controller
 
         $commentContent = $request->comment;
         $comment = $this->commentInterface->find($id);
-        if (! $comment) 
+        if (!$comment) 
             return  Helper::getResponseJson(404, "Không có bình luận có id = ". $id, [], $action);
-        if ($comment->user_id !== $user->id) 
+
+        $checkAuthorization = false;
+        try {
+            $checkAuthorization = $this->authorize('update', $comment);
+        } catch (AuthorizationException $e) {
+
+        }
+
+        if (!$checkAuthorization) 
             return  Helper::getResponseJson(404, "Không phải bình luận của bạn nên không thể sửa.", [], $action);
 
         $comment = $this->commentInterface->update($comment->id, ['content' => $commentContent]);
@@ -105,15 +99,20 @@ class CommentController extends Controller
      */
     public function destroy($id)
     {
-        $user = Helper::getUser();
+
         $action = "delete message";
         $comment = $this->commentInterface->find($id);
 
         if (! $comment) 
-            return  Helper::getResponseJson(404, "Không có bình luận có id = ". $id, [], $action);
+            return Helper::getResponseJson(404, "Không có bình luận có id = ". $id, [], $action);
 
-        if ($comment->user_id !== $user->id) 
-            return  Helper::getResponseJson(404, "Không phải bình luận của bạn nên không thể sửa.", [], $action);
+        $checkAuthorization = false;
+        try {
+            $checkAuthorization = $this->authorize('update',$comment);
+        } catch (AuthorizationException $e) {
+
+        }
+        if (!$checkAuthorization) return  Helper::getResponseJson(404, "Không phải bình luận của bạn nên không thể sửa.", [], $action);
 
         $this->commentInterface->delete($id);
         return  Helper::getResponseJson(200, 'Xóa bình luận thành công.', [], $action);

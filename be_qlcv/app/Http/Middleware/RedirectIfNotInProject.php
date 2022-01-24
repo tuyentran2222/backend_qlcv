@@ -25,7 +25,7 @@ class RedirectIfNotInProject
      * @param  \Closure  $next
      * @return mixed
      */
-    public function handle(Request $request, Closure $next  )
+    public function handle(Request $request, Closure $next)
     {
         $action = "middleware";
         $id = (int) $request->route()->parameter('id');
