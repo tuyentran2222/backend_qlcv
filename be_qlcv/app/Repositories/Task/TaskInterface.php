@@ -22,4 +22,6 @@ interface TaskInterface
 
     public function getAllCommentsOfTask(Task $task);
 
+    public function getExecutorsOfTask(Task $task);
+
 }

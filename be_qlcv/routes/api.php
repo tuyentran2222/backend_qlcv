@@ -8,6 +8,9 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\AuthController;
+use App\Events\CommentEvent;
+use App\Helpers\Helper;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -27,7 +30,7 @@ Route::post('/users/login', [AuthController::class, 'login']);
 Route::post('/users/register', [AuthController::class, 'register']);
 Route::post("/authentication/verifyToken", [AuthController::class, 'verifyToken']);
 Route::group(['middleware' => ['jwt.verify']], function() {
-    Route::get('logout', [UserController::class, 'logout']);
+    Route::get('logout', [AuthController::class, 'logout']);
     Route::get('getUser', [UserController::class, 'getUser']);
     Route::get('getAllProjects', [UserController::class, 'getAllProjects']);
     Route::post('user/update/{id}', [UserController::class, 'update']);
@@ -54,6 +57,7 @@ Route::group(['middleware' => ['jwt.verify']], function() {
     Route::patch('tasks/update/{id}',  [TaskController::class, 'update'])->middleware('checkUserInProject');
     Route::get('tasks/getCount',  [TaskController::class, 'getCountAssignedTask']);
     Route::get('tasks/overtime',  [TaskController::class, 'getOvertimeTask']);
+    Route::get('task/{task}/executors', [TaskController::class, 'getExecutorsOfTask']);
 
     //comment
     Route::post('tasks/{id}/comment/add',  [CommentController::class, 'store'])->middleware('checkUserInProject');

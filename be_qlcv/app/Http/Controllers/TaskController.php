@@ -148,7 +148,7 @@ class TaskController extends Controller
         $task = $this->taskInterface->find($id);
         
         //get comments of task
-        $comments = $task->comments()->orderBy('created_at', 'desc')->get();
+        $comments = $task->comments()->orderBy('updated_at', 'desc')->get();
         $executors = $task->executors()->get();
         $executorsArrayIds = [];
         foreach ($executors as $executor) {
@@ -199,10 +199,12 @@ class TaskController extends Controller
         $taskRules = $this->getTaskRulesValidation('update');
         $validator = Validator::make($request->all(), $taskRules);
 
+        //check validate of inputs
         if ($validator->fails()) {
             return Helper::getResponseJson(406, "Thông tin nhập vào chưa hợp lệ", [], $action, $validator->errors());
         }
         
+        //check task policy
         $checkAuthorization = false;
         try {
             $checkAuthorization = $this->authorize('update',$task);
@@ -271,9 +273,10 @@ class TaskController extends Controller
 
     public function getAssignedTask() {
         // can update
+        $userId = Helper::getUser()->id;
         $action = 'get assigned task';
         $parentTask = array();
-        $tasks = Task::where('taskPersonId',"like", "%".$this->userId."%")->orderBy('taskStart', 'desc')->get();
+        $tasks = Task::where('taskPersonId',"like", "%".$userId."%")->orderBy('taskStart', 'desc')->get();
         $projects = array();
         foreach ($tasks as $index => $task) {
             $parentTask[$index] = $task;
@@ -288,41 +291,29 @@ class TaskController extends Controller
         ];
 
         return Helper::getResponseJson(200, "Thành công",  $dataReturn, $action);
-        // return response()->json([
-        //     'data' => $parentTask,
-        //     'projects' => $projects,
-        //     'count' => count($parentTask),
-        //     'code' => 200,
-        //     'message' => "Thành công"
-        // ]) ;
+
     }
 
     public function getCountAssignedTask() {
         // can update
         $action = 'get count task';
-        $assignedTasksNumber = Task::where('taskPersonId', $this->userId)->orderBy('taskStart', 'desc')->get()->count();
-        $createTasksNumber = Task::where('taskPersonId', $this->userId)->orderBy('taskStart', 'desc')->get()->count();
+        $userId = Helper::getUser()->id;
+        $assignedTasksNumber = Task::where('taskPersonId', $userId)->orderBy('taskStart', 'desc')->get()->count();
+        $createTasksNumber = Task::where('taskPersonId', $userId)->orderBy('taskStart', 'desc')->get()->count();
         $dataReturn = [
             'countAssigned' => $assignedTasksNumber,
             'countCreate' => $assignedTasksNumber
         ];
         return Helper::getResponseJson(200, "Thành công",  $dataReturn, $action);
-        // return response()->json(
-        //     [
-        //         'countAssigned' => $assignedTasksNumber,
-        //         'countCreate' => $assignedTasksNumber,
-        //         'code' => 200,
-        //         'message' => "Thành công"
-        //     ]
-        // );
     }
 
     public function getCreatedTask() {
         //can update
         $action = "get created task";
+        $userId = Helper::getUser()->id;
         $parentTask = array();
         $parentTaskId = array();  
-        $tasks = Task::where('owner', $this->userId)->orderBy('taskStart', 'desc')->get();
+        $tasks = Task::where('owner', $userId)->orderBy('taskStart', 'desc')->get();
         $projects = array();
         foreach ($tasks as $index => $task) {
             $parentTask[$index] = $task;
@@ -337,13 +328,6 @@ class TaskController extends Controller
         ];
 
         return Helper::getResponseJson(200, "Thành công",  $dataReturn, $action);
-        // return response()->json([
-        //     'data' => $parentTask,
-        //     'projects' => $projects,
-        //     'count' => count($parentTask),
-        //     'code' => 200,
-        //     'message' => "Thành công"
-        // ]) ;
     }
 
     public function getOvertimeTask() {
@@ -352,8 +336,8 @@ class TaskController extends Controller
         $parentTask = array();
         $parentTaskId = array();
         $currentDate  = date('Y/m/d H:i:s');
-
-        $tasks = Task::where('ownerId', $this->userId)->where('taskEnd', '<', $currentDate)->where('status', '<' , 3)->orderBy('taskStart', 'desc')->get();
+        $userId = Helper::getUser()->id;
+        $tasks = Task::where('ownerId', $userId)->where('taskEnd', '<', $currentDate)->where('status', '<' , 3)->orderBy('taskStart', 'desc')->get();
         $projects = array();
         foreach ($tasks as $index => $task) {
             $parentTask[$index] = $task;
@@ -368,6 +352,18 @@ class TaskController extends Controller
         ];
 
         return Helper::getResponseJson(200, "Thành công",  $dataReturn, $action);
+    }
+
+    public function getExecutorsOfTask(Task $task) {
+        $action ='get executors of task';
+        $executors = $this->taskInterface->getExecutorsOfTask($task);
+        $dataReturn = [];
+        foreach ($executors as $index => $executor) {
+            $user = $executor->user()->get()[0];
+            $dataReturn[$index]['name'] = $user->username;
+            $dataReturn[$index]['id'] = $user->id;
+        }
+        return Helper::getResponseJson(200, 'Thành công', $dataReturn, $action);
     }
 
     /**

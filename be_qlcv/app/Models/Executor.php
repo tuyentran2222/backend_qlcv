@@ -20,6 +20,10 @@ class Executor extends Model
      */
     public function task()
     {
-        return $this->belongsTo(Task::class, 'task_id');
+        return $this->belongsTo(Task::class, 'taskId');
+    }
+
+    public function user() {
+        return $this->belongsTo(User::class, 'userId');
     }
 }

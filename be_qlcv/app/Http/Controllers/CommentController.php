@@ -52,7 +52,8 @@ class CommentController extends Controller
             'id' => $user->id,
             'comment_id' => $comment->id
         ];
-        broadcast(new CommentEvent($user, 'message'));
+        
+        broadcast(new CommentEvent($user, $comment->content))->toOthers();
 
         return Helper::getResponseJson(200, 'Thêm bình luận thành công', $dataReturn, $action);
     }

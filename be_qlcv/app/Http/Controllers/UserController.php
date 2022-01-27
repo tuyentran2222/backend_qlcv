@@ -13,6 +13,9 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
 
 use App\Helpers\Helper;
+use Facade\FlareClient\Stacktrace\File;
+use Illuminate\Http\File as HttpFile;
+
 class UserController extends Controller
 {
     public UserInterface $userInterface;
@@ -28,15 +31,24 @@ class UserController extends Controller
     }
 
     public function update($id, Request $request){
+        $user = $this->userInterface->find($id);
         $action = "update user";
-        $file = $request->file('avatar');
-        if(!is_null($file)){
-            $filename = $file->getClientOriginalName().'.'.$file->extension();
-            $movepath = "avt\\".$id;
-            $file->move(public_path($movepath), $filename);
-            $path = $movepath.'\\'.$filename;
-        }
 
+        if ($request->hasFile('avatar')) {
+            $avatarPath = $request->file('avatar');
+            $avatarName = time() . '.' . $avatarPath->getClientOriginalExtension();
+            //delete all files avatar before
+            $files = glob(public_path().'/storage/uploads/avatar/'.$user->id.'/*'); //get all file names
+            foreach($files as $file){
+                if(is_file($file))
+                unlink($file); //delete file
+            }
+            $path = $request->file('avatar')->storeAs('uploads/avatar/'.$user->id, $avatarName, 'public');
+            $user->avatar = '/storage/'.$path;
+
+            $this->userInterface->update($user->id,['avatar'=>$user->avatar]);
+        };
+        
         $user = User::updateOrCreate(
             ['id' => $id],
             [

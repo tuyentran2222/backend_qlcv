@@ -39,7 +39,11 @@ class TaskRepository extends EloquentRepository implements TaskInterface
     }
 
     public function getAllCommentsOfTask(Task $task) {
-        return $task->comments()->orderBy('created_at', 'desc')->get();
+        return $task->comments()->orderBy('updated_at', 'desc')->get();
+    }
+
+    public function getExecutorsOfTask(Task $task) {
+        return $task->executors()->get();
     }
 
 }

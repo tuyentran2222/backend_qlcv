@@ -52,7 +52,7 @@ class MemberController extends Controller
         $ownerId = $project->ownerId;
         $ownerProject = $this->userInterface->find($ownerId);
         $memberArray = array();
-        if ($ownerId->ownerId === $ownerProject->id) $check=true;
+        if ($userId === $ownerProject->id) $check=true;
         $member = $project->members()->get();
         $index = 0;
         

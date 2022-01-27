@@ -73,11 +73,9 @@ class AuthController extends Controller
             $avatarName = time() . '.' . $avatarPath->getClientOriginalExtension();
             $path = $request->file('avatar')->storeAs('uploads/avatar/'.$user->id, $avatarName, 'public');
             $user->avatar = '/storage/'.$path;
-            return $user->avatar;
             $this->userInterface->update($user->id,['avatar'=>$user->avatar]);
         };
-         
-
+    
         return Response()->json(Helper::getResponseJson(200, "Đăng ký thành công", $userArray, 'register' , []));
 
     }
@@ -113,7 +111,7 @@ class AuthController extends Controller
             return  Helper::getResponseJson(500,"Không thể tạo token", [], 'login', []);
         }
 
-        $dataReturn = ["token" => $token, 'data' => JWTAuth::user()];
+        $dataReturn = ["token" => $token, 'user' => JWTAuth::user()];
         return Helper::getResponseJson(200, "Đăng nhập thành công", $dataReturn, 'login');
     }
  
@@ -133,6 +131,18 @@ class AuthController extends Controller
         }
     }
 
+    
+    /**
+     * get token send from client
+     */
+    public static function bearerToken($request)
+    {
+        $header = $request->header('Authorization', '');
+        if (Str::startsWith($header, 'Bearer ')) {
+            return Str::substr($header, 7);
+        }
+    }
+    
     public function getUserRulesValidation() {
         return 
         [
