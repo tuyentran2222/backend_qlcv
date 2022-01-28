@@ -14,7 +14,7 @@ class ChangeDataTypeColumnTasksTable extends Migration
     public function up()
     {
         Schema::table('tasks', function (Blueprint $table) {
-            $table->delete('taskPersonId');
+            $table->dropColumn('taskPersonId');
             $table->string('taskPersonId');
         });
     }
