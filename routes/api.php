@@ -64,7 +64,7 @@ Route::group(['middleware' => ['jwt.verify']], function() {
     //comment
     Route::post('tasks/{id}/comment/add',  function(){
         return 123;
-    })->middleware('checkUserInProject');
+    });
     Route::delete('comments/delete/{id}', [CommentController::class, 'destroy']);
     Route::patch('comments/update/{id}', [CommentController::class, 'update']);
 

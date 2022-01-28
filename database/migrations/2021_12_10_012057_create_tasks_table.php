@@ -23,7 +23,7 @@ class CreateTasksTable extends Migration
             $table->dateTime('taskEnd')->nullable()->default(null);
             $table->integer('status')->default(1);
             $table->double('levelCompletion')->default(0);
-            $table->unsignedBigInteger('taskPersonId');
+            $table->string('taskPersonId');
             $table->unsignedBigInteger('parentId')->nullable();
             $table->unsignedBigInteger('projectId');
             $table->string('parentList')->nullable(null);
