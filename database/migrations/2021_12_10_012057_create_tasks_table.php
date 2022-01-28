@@ -27,6 +27,7 @@ class CreateTasksTable extends Migration
             $table->unsignedBigInteger('parentId')->nullable();
             $table->unsignedBigInteger('projectId');
             $table->string('parentList')->nullable(null);
+            $table->unsignedBigInteger('ownerId');
             $table->foreign('projectId')->references('id')->on('projects');
             // $table->foreign('parentId')->references('id')->on('tasks');
             // $table->foreign('taskPersonId')->references('id')->on('users');
