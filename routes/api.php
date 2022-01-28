@@ -25,7 +25,9 @@ use App\Helpers\Helper;
 // Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 //     return $request->user();
 // });
-
+Route::get('/test', function(){
+    return 'Test successfully';
+});
 Route::post('/users/login', [AuthController::class, 'login']);
 Route::post('/users/register', [AuthController::class, 'register']);
 Route::post("/authentication/verifyToken", [AuthController::class, 'verifyToken']);
