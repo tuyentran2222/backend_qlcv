@@ -62,7 +62,9 @@ Route::group(['middleware' => ['jwt.verify']], function() {
     Route::get('task/{task}/executors', [TaskController::class, 'getExecutorsOfTask']);
 
     //comment
-    Route::post('tasks/{id}/comment/add',  [CommentController::class, 'store'])->middleware('checkUserInProject');
+    Route::post('tasks/{id}/comment/add',  function(){
+        return 123;
+    })->middleware('checkUserInProject');
     Route::delete('comments/delete/{id}', [CommentController::class, 'destroy']);
     Route::patch('comments/update/{id}', [CommentController::class, 'update']);
 
