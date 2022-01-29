@@ -30,7 +30,7 @@ class UserController extends Controller
         return $this->userInterface->index();
     }
 
-    public function update($id, Request $request){
+    public function update(Request $request){
         $user = Helper::getUser(); 
         $action = "update user";
 
@@ -50,7 +50,7 @@ class UserController extends Controller
         };
         
         $user = User::updateOrCreate(
-            ['id' => $id],
+            ['id' => $user->id],
             [
                 'username' => $request->username,
                 'firstname' => $request->firstname,
