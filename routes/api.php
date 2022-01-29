@@ -56,7 +56,7 @@ Route::group(['middleware' => ['jwt.verify']], function() {
     Route::post('tasks/create/{parentId}/projects/{projectId}',  [TaskController::class, 'store']);
     Route::get('tasks/edit/{id}',  [TaskController::class, 'edit'])->middleware('checkUserInProject');
     Route::delete('tasks/delete/{id}',  [TaskController::class, 'destroy'])->middleware('checkUserInProject');
-    Route::patch('tasks/update/{id}',  [TaskController::class, 'update'])->middleware('checkUserInProject');
+    Route::post('tasks/update/{id}',  [TaskController::class, 'update'])->middleware('checkUserInProject');
     Route::get('tasks/getCount',  [TaskController::class, 'getCountAssignedTask']);
     Route::get('tasks/overtime',  [TaskController::class, 'getOvertimeTask']);
     Route::get('task/{task}/executors', [TaskController::class, 'getExecutorsOfTask']);
