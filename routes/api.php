@@ -35,7 +35,7 @@ Route::group(['middleware' => ['jwt.verify']], function() {
     Route::get('logout', [AuthController::class, 'logout']);
     Route::get('getUser', [UserController::class, 'getUser']);
     Route::get('getAllProjects', [UserController::class, 'getAllProjects']);
-    Route::post('user/update/{id}', [UserController::class, 'update']);
+    Route::post('user/update', [UserController::class, 'update']);
     Route::get('/users', [UserController::class, 'index']);
     Route::get('projects/', [ProjectController::class, 'index']);
     Route::get('projects/{id}', [ProjectController::class, 'show']);

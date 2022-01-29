@@ -31,7 +31,7 @@ class UserController extends Controller
     }
 
     public function update($id, Request $request){
-        $user = $this->userInterface->find($id);
+        $user = Helper::getUser(); 
         $action = "update user";
 
         if ($request->hasFile('avatar')) {
