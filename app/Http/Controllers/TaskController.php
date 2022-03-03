@@ -294,17 +294,17 @@ class TaskController extends Controller
 
     }
 
-    public function getCountAssignedTask() {
+    public static function getCountAssignedTask() {
         // can update
         $action = 'get count task';
         $userId = Helper::getUser()->id;
-        $assignedTasksNumber = Task::where('taskPersonId', $userId)->orderBy('taskStart', 'desc')->get()->count();
-        $createTasksNumber = Task::where('taskPersonId', $userId)->orderBy('taskStart', 'desc')->get()->count();
+        $assignedTasksNumber = Executor::where('userId', $userId)->get()->count();
+        $createTasksNumber = Task::where('ownerId', $userId)->get()->count();
         $dataReturn = [
             'countAssigned' => $assignedTasksNumber,
-            'countCreate' => $assignedTasksNumber
+            'countCreate' => $createTasksNumber
         ];
-        return Helper::getResponseJson(200, "Thành công",  $dataReturn, $action);
+        return $dataReturn;
     }
 
     public function getCreatedTask() {

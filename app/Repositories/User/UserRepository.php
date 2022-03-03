@@ -39,4 +39,8 @@ class UserRepository extends EloquentRepository implements UserInterface
         return $this->model->where('email', $email)->first();
     }
 
+    public function adminUpdate($email){
+        return $this->model->where('email', $email)->first();
+    }
+
 }

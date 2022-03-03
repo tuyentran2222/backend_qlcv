@@ -66,6 +66,7 @@ class Kernel extends HttpKernel
         'jwt.verify' => \App\Http\Middleware\JwtMiddleware::class,
         'jwt.auth' => \Tymon\JWTAuth\Middleware\GetUserFromToken::class,
         'jwt.refresh' => \Tymon\JWTAuth\Middleware\RefreshToken::class,
-        'checkUserInProject' => \App\Http\Middleware\RedirectIfNotInProject::class
+        'checkUserInProject' => \App\Http\Middleware\RedirectIfNotInProject::class,
+        'isAdmin' => \App\Http\Middleware\IsAdmin::class
     ];
 }

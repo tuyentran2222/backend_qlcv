@@ -2,11 +2,13 @@
 
 namespace App\Repositories\Project;
 
+use App\Helpers\Helper;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use App\Repositories\EloquentRepository;
 use App\Repositories\Project\ProjectInterface;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\TextUI\Help;
 
 class ProjectRepository extends EloquentRepository implements ProjectInterface
 {
@@ -33,6 +35,13 @@ class ProjectRepository extends EloquentRepository implements ProjectInterface
 
     public function getBasicProjectInfo($id) {
         return $this->model()::select('id', 'projectName')->where('id', $id)->get()->first();
+    }
+
+    public function getNumberProjectsByStatus()
+    {
+        return $this->model()::join('members', 'projects.id', '=','members.projectId')
+        ->where('members.userId', '=', Helper::getUser()->id )
+        ->get(['projects.id', 'projects.status', 'projects.ownerId']);
     }
 
 }

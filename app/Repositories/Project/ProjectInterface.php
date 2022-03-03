@@ -39,4 +39,6 @@ interface ProjectInterface
      */
     public function getBasicProjectInfo($id);
 
+    public function getNumberProjectsByStatus();
+
 }

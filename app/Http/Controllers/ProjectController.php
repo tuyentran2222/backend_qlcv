@@ -70,6 +70,7 @@ class ProjectController extends Controller
     {
         $action = "create project";
         $user = Helper::getUser();
+
         $validator = Validator::make($request->all(), $this->getProjectRulesValidation());
 
         if ($validator->fails()) {
@@ -147,7 +148,7 @@ class ProjectController extends Controller
     { 
         //Validate data
         $action ="update project";
-        $data = $request->only('projectCode', 'projectName', 'projectStart', 'projectEnd', 'partner', 'status');
+        $data = $request->only('projectCode', 'projectName', 'projectStart', 'projectEnd', 'partner', '$status');
         $validator = Validator::make($request->all(), $this->getProjectRulesValidation());
         if ($validator->fails()) {
             return Helper::getResponseJson(400, "Thông tin nhập vào chưa hợp lệ", [], $action, $validator->errors());
@@ -171,7 +172,7 @@ class ProjectController extends Controller
             'projectStart' => $request->projectStart,
             'projectEnd' => $request->projectEnd,
             'partner' => $request->partner,
-            'status' => $request->status
+            '$status' => $request->status
         ];
 
         //Request is valid, update project
@@ -213,9 +214,11 @@ class ProjectController extends Controller
     
     public function getCountProjects() {
         $action = "get number of projects";
+        $countTasks = TaskController::getCountAssignedTask();
         $user = Helper::getUser();
         $count = $this->memberInterface->getCountProjectByUser($user->id);
-        return Helper::getResponseJson(200, 'Thành công.', $count, $action);
+        $countTasks['countProjects'] = $count;
+        return Helper::getResponseJson(200, 'Thành công.', $countTasks, $action);
     }
 
     public function getProjectRulesValidation($type = "create") {
@@ -227,6 +230,25 @@ class ProjectController extends Controller
             'partner' => 'string|required',
             'status' => 'integer|required',
         ];
+    }
+
+    public function getNumberProjectsByStatus() {
+        $data = $this->projectInterface->getNumberProjectsByStatus();
+        $status = [0,0,0,0];
+        $count = 0;
+        foreach ($data as $e) {
+            if ($e->ownerId == Helper::getUser()->id) $count++;
+            switch ($e->status) {
+                case 1 : $status[0] = $status[0]+1;break;
+                case 2 : $status[1] = $status[1]+1;break;
+                case 3 : $status[2] = $status[2]+1;break;
+                case 4 : $status[3] = $status[3]+1;break;
+                default: break;
+            }
+            
+        }
+        
+        return Helper::getResponseJson(200, "Thành công", [$status, [$count, count($data)-$count]], "status");
     }
 
 }

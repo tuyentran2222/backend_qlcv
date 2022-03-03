@@ -36,13 +36,14 @@ Route::group(['middleware' => ['jwt.verify']], function() {
     Route::get('getUser', [UserController::class, 'getUser']);
     Route::get('getAllProjects', [UserController::class, 'getAllProjects']);
     Route::post('user/update', [UserController::class, 'update']);
-    Route::get('/users', [UserController::class, 'index']);
+    Route::get('/users', [UserController::class, 'index'])->middleware('isAdmin');
     Route::get('projects/', [ProjectController::class, 'index']);
     Route::get('projects/{id}', [ProjectController::class, 'show']);
     Route::post('create', [ProjectController::class, 'store']);
     Route::patch('projects/update/{project}',  [ProjectController::class, 'update']);
     Route::get('projects/edit/{project}',  [ProjectController::class, 'edit']);
     Route::delete('projects/delete/{project}',  [ProjectController::class, 'destroy']);
+    Route::get('status/projects/', [ProjectController::class, 'getNumberProjectsByStatus']);
     Route::get('/count/projects', [ProjectController::class, 'getCountProjects']);
 
     Route::get('members/{project}',  [MemberController::class, 'index']);
@@ -52,6 +53,7 @@ Route::group(['middleware' => ['jwt.verify']], function() {
 
     Route::get('projects/{id}/tasks', [TaskController::class, 'index']);
     Route::get('tasks/assigned',  [TaskController::class, 'getAssignedTask']);
+
     Route::get('task/{id}/comments',  [TaskController::class, 'getAllComments'])->middleware('checkUserInProject');
     Route::post('tasks/create/{parentId}/projects/{projectId}',  [TaskController::class, 'store']);
     Route::get('tasks/edit/{id}',  [TaskController::class, 'edit'])->middleware('checkUserInProject');
@@ -64,6 +66,9 @@ Route::group(['middleware' => ['jwt.verify']], function() {
     //comment
     Route::post('tasks/{id}/comment/add',  [CommentController::class, 'store'])->middleware('checkUserInProject');
     Route::delete('comments/delete/{id}', [CommentController::class, 'destroy']);
-    Route::patch('comments/update/{id}', [CommentController::class, 'update']);
+    Route::post('comments/update/{id}', [CommentController::class, 'update']);
 
+    // Route::get('users',  [TaskController::class, 'getAllComments'])->middleware('isAdmin');
+    Route::delete('users/delete/{id}', [UserController::class, 'destroy'])->middleware('isAdmin');
+    Route::post('admin/user/update/{id}', [UserController::class, 'adminUpdate'])->middleware('isAdmin');
 });

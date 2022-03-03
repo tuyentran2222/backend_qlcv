@@ -13,6 +13,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
 
 use App\Helpers\Helper;
+use Exception;
 use Facade\FlareClient\Stacktrace\File;
 use Illuminate\Http\File as HttpFile;
 
@@ -27,7 +28,7 @@ class UserController extends Controller
     }
 
     public function index() {
-        return $this->userInterface->index();
+        return Helper::getResponseJson(200,"Thành công", $this->userInterface->index(), "lấy user");
     }
 
     public function update(Request $request){
@@ -60,6 +61,38 @@ class UserController extends Controller
         );
 
         return Helper::getResponseJson(200, "Cập nhật thành công",  $user, $action);
+    }
+
+    public function adminUpdate(Request $request,int $id){
+        $user = Helper::getUser();
+        $validator = Validator::make($request->all(), ['email' => 'email', 'firstname' =>'required', 'lastname' =>'required', 'gender' =>'required', 'username' =>'required' ]);
+        if ($validator->fails()) return  Helper::getResponseJson(400,"Cập nhật không thành công", $validator->errors(), "Cập nhật thông tin");
+        $user = User::updateOrCreate(
+            ['id' => $id],
+            [
+                'username' => $request->username,
+                'firstname' => $request->firstname,
+                'lastname' => $request->lastname,
+                'gender'  => $request->gender,
+                'email'  => $request->email, 
+            ]
+        );
+        return Helper::getResponseJson(200,"Cập nhật thành công", $user, "Cập nhật thông tin");
+    }
+
+    public function destroy(Request $request, $id) {
+        $user = $this->userInterface->find($id);
+        if (!$user) {
+            return Helper::getResponseJson(404, "Không có người này","","Xóa người dùng");
+        }
+
+        try {
+            $this->userInterface->delete($id);
+            return Helper::getResponseJson(200, "Xóa thành công", $user, "Xóa người dùng");
+        }
+        catch(Exception $e) {
+            return Helper::getResponseJson(404, "Đã có lỗi xảy ra","","Xóa người dùng");
+        }
     }
 
     public function getUser(Request $request)
