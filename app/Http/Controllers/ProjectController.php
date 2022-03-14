@@ -148,7 +148,7 @@ class ProjectController extends Controller
     { 
         //Validate data
         $action ="update project";
-        $data = $request->only('projectCode', 'projectName', 'projectStart', 'projectEnd', 'partner', '$status');
+        $data = $request->only('projectCode', 'projectName', 'projectStart', 'projectEnd', 'partner', 'status');
         $validator = Validator::make($request->all(), $this->getProjectRulesValidation());
         if ($validator->fails()) {
             return Helper::getResponseJson(400, "Thông tin nhập vào chưa hợp lệ", [], $action, $validator->errors());
@@ -172,7 +172,7 @@ class ProjectController extends Controller
             'projectStart' => $request->projectStart,
             'projectEnd' => $request->projectEnd,
             'partner' => $request->partner,
-            '$status' => $request->status
+            'status' => $request->status
         ];
 
         //Request is valid, update project
